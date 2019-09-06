@@ -1,0 +1,255 @@
+USE [DBAdmin]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_db_healthcheck_summary]    Script Date: 09/06/2019 10:32:13 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+  create procedure [dbo].[sp_db_healthcheck_summary] 
+  
+  @check_date datetime = null
+
+  as
+
+  declare @servername varchar(max)
+  set @servername=@@servername
+
+
+
+    ----------------------------------------------------------------------------------------------------------------------
+  -----------------------------------------------begin build db health html--------------------------------------------
+  ----------------------------------------------------------------------------------------------------------------------
+
+
+  
+  
+
+declare @v_dbhealth_drive varchar(max)
+declare @v_dbhealth_pf varchar(max)
+declare @v_dbhealth_date varchar(max)
+
+declare @html_dbhealth_begin varchar(max)
+declare @html_dbhealth_end varchar(max)
+declare @html_dbhealth_body varchar(max)
+declare @html_dbhealth_table_begin varchar(max)
+declare @html_dbhealth_table_end varchar(max)
+declare @html_dbhealth_table_body varchar(max)
+declare @html_dbhealth_table_row varchar(max)
+declare @html_dbhealth_final_health varchar (max)
+
+
+
+set @html_dbhealth_table_body = char(13) + char(10)
+set @html_dbhealth_final_health = char(13) + char(10)
+
+set @html_dbhealth_begin = '<html><body>' + char(13) + char(10)
+set @html_dbhealth_end = '</body></html>' + char(13) + char(10)
+set @html_dbhealth_table_begin = '<table border=1><caption> ' + @servername + ' </caption>' + char(13) + char(10)
+set @html_dbhealth_table_end = '</table>' + char(13) + char(10)
+
+
+
+
+
+
+declare a_cursor cursor for
+
+
+
+  select
+  b.[name] as dbname,
+  a.db_healthcheck_dbcc_out_messagetext
+  ,convert(varchar(max),a.db_healthcheck_dbcc_out_timestamp,101) as check_date
+  --a.*
+  from dbadmin..db_healthcheck_dbcc_out a
+  left join sysdatabases b on a.db_healthcheck_dbcc_out_dbid=b.dbid
+  where
+  a.db_healthcheck_dbcc_out_messagetext like '%checkdb found%'
+  and
+  convert(varchar(max),a.db_healthcheck_dbcc_out_timestamp,101) in (isnull(@check_date,convert(varchar(max),getdate(),101)))
+
+
+  open a_cursor
+  fetch next from a_cursor into @v_dbhealth_drive, @v_dbhealth_pf, @v_dbhealth_date
+
+  while @@FETCH_STATUS=0
+  begin
+
+  set @html_dbhealth_table_row = '<tr>'
+
+
+
+
+  set @html_dbhealth_table_row += '<td>' + @v_dbhealth_drive + '</td>'
+  set @html_dbhealth_table_row += '<td>' + @v_dbhealth_pf + '</td>'
+  set @html_dbhealth_table_row += '<td>' + @v_dbhealth_date + '</td>'
+
+
+  fetch next from a_cursor into @v_dbhealth_drive, @v_dbhealth_pf, @v_dbhealth_date
+
+
+  set @html_dbhealth_table_row += '</tr>'
+  set @html_dbhealth_table_body += @html_dbhealth_table_row
+
+  end
+
+  close a_cursor
+  deallocate a_cursor
+
+
+
+  
+  set @html_dbhealth_final_health +=  
+  @html_dbhealth_begin
+  +  
+  @html_dbhealth_table_begin  
+  +  
+  @html_dbhealth_table_body  
+  +  
+  @html_dbhealth_table_end  
+  +  
+  @html_dbhealth_end
+
+
+
+
+  declare @emailsubject varchar(max)
+  set @emailsubject = 'db health: ' + @servername
+
+    exec msdb..sp_send_dbmail 
+  @recipients='vassant.patel@jdrsolutions.com'
+  ,@subject= @emailsubject
+  ,@body=@html_dbhealth_final_health
+  ,@from_address='vassant.patel@jdrsolutions.com'
+  ,@body_format='HTML'
+
+
+
+  ----------------------------------------------------------------------------------------------------------------------
+  -------------------------------------------------end build db health html--------------------------------------------
+  ----------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+  ----------------------------------------------------------------------------------------------------------------------
+  -----------------------------------------------begin build disk space html--------------------------------------------
+  ----------------------------------------------------------------------------------------------------------------------
+
+  
+  
+
+declare @v_drive varchar(max)
+declare @v_pf varchar(max)
+declare @v_date varchar(max)
+
+declare @html_begin varchar(max)
+declare @html_end varchar(max)
+declare @html_body varchar(max)
+declare @html_table_begin varchar(max)
+declare @html_table_end varchar(max)
+declare @html_table_body varchar(max)
+declare @html_table_row varchar(max)
+declare @html_final_disk varchar (max)
+
+
+set @html_table_body = char(13) + char(10)
+set @html_final_disk = char(13) + char(10)
+
+set @html_begin = '<html><body>' + char(13) + char(10)
+set @html_end = '</body></html>' + char(13) + char(10)
+set @html_table_begin = '<table border=1><caption> ' + (select @@servername) + ' </caption>' + char(13) + char(10)
+set @html_table_end = '</table>' + char(13) + char(10)
+
+
+
+
+
+
+declare a_cursor cursor for
+
+
+    select
+  a.db_healthcheck_disk_space_drive
+  ,a.db_healthcheck_disk_space_drive_percent_free
+  ,convert(varchar(max), a.db_healthcheck_disk_space_drive_timestamp,101) as check_date
+
+  from dbadmin..db_healthcheck_disk_space a
+  where
+  convert(varchar(max),a.db_healthcheck_disk_space_drive_timestamp,101) in (isnull(@check_date,convert(varchar(max),getdate(),101)))
+
+
+
+  open a_cursor
+  fetch next from a_cursor into @v_drive, @v_pf, @v_date
+
+  while @@FETCH_STATUS=0
+  begin
+
+  set @html_table_row = '<tr>'
+
+
+
+
+  set @html_table_row += '<td>' + @v_drive + '</td>'
+  set @html_table_row += '<td>' + @v_pf + '</td>'
+  set @html_table_row += '<td>' + @v_date + '</td>'
+
+
+  fetch next from a_cursor into @v_drive, @v_pf, @v_date
+
+
+  set @html_table_row += '</tr>'
+  set @html_table_body += @html_table_row
+
+  end
+
+  close a_cursor
+  deallocate a_cursor
+
+
+
+  
+  set @html_final_disk +=  
+  @html_begin
+  +  
+  @html_table_begin  
+  +  
+  @html_table_body  
+  +  
+  @html_table_end  
+  +  
+  @html_end
+
+
+
+
+  declare @emailsubject_disk_space varchar(max)
+  set @emailsubject_disk_space = 'db disk space: ' + @servername
+
+  
+    exec msdb..sp_send_dbmail 
+  @recipients='vassant.patel@jdrsolutions.com'
+  ,@subject=@emailsubject_disk_space
+  ,@body=@html_final_disk
+  ,@from_address='vassant.patel@jdrsolutions.com'
+  ,@body_format='HTML'
+
+
+  ----------------------------------------------------------------------------------------------------------------------
+  -------------------------------------------------end build disk space html--------------------------------------------
+  ----------------------------------------------------------------------------------------------------------------------
+
+
+
+
+GO
+
+
