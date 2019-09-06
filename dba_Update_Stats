@@ -1,0 +1,57 @@
+USE [DBAdmin]
+GO
+
+/****** Object:  StoredProcedure [dbo].[dba_Update_Stats]    Script Date: 09/06/2019 10:31:53 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+CREATE PROCEDURE [dbo].[dba_Update_Stats] (@DBName varchar(100) = '')
+AS BEGIN
+
+--   EXEC dba_Update_Stats NULL
+
+IF @DBName = '' SET @DBName = NULL
+
+	
+DECLARE @Database VARCHAR(255)  
+DECLARE @Table VARCHAR(255)  
+DECLARE @cmd NVARCHAR(500)  
+
+DECLARE  DatabaseCursor CURSOR FOR  
+SELECT	 name FROM sys.databases WITH (NOLOCK)  
+ WHERE	 name NOT IN ('master','msdb','tempdb','model','distribution') AND
+	 DATABASEPROPERTYEX(NAME,'STATUS') = 'ONLINE'
+	 AND is_read_only = 0  -- cannot be read_only
+	 AND name = COALESCE(@DBName, name)
+	 
+ORDER BY name
+
+OPEN DatabaseCursor  
+
+FETCH NEXT FROM DatabaseCursor INTO @Database  
+WHILE @@FETCH_STATUS = 0  BEGIN  
+
+   SET @cmd = 'USE [' + @Database + '];  EXEC sp_updatestats; '
+    
+
+   PRINT @cmd
+   EXEC (@cmd)  
+
+ 
+   FETCH NEXT FROM DatabaseCursor INTO @Database  
+END  
+CLOSE DatabaseCursor  
+DEALLOCATE DatabaseCursor 
+
+RETURN 0
+
+END
+
+
+GO
+
+
