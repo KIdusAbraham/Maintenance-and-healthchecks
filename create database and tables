@@ -1,0 +1,536 @@
+USE [master]
+GO
+
+/****** Object:  Database [DBAdmin]    Script Date: 09/06/2019 10:42:05 ******/
+CREATE DATABASE [DBAdmin] ON  PRIMARY 
+( NAME = N'DBAdmin', FILENAME = N'D:\Program Files\Microsoft SQL Server\MSSQL11.JDRSQL01_2012\MSSQL\DATA\DBAdmin.mdf' , SIZE = 983040KB , MAXSIZE = UNLIMITED, FILEGROWTH = 10240KB )
+ LOG ON 
+( NAME = N'DBAdmin_log', FILENAME = N'D:\Program Files\Microsoft SQL Server\MSSQL11.JDRSQL01_2012\MSSQL\DATA\DBAdmin_log.ldf' , SIZE = 40960KB , MAXSIZE = 2048GB , FILEGROWTH = 10240KB )
+GO
+
+
+USE [DBAdmin]
+GO
+
+/****** Object:  Table [dbo].[BlitzCache]    Script Date: 09/06/2019 10:41:36 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+SET ANSI_PADDING ON
+GO
+
+CREATE TABLE [dbo].[BlitzCache](
+	[ID] [bigint] IDENTITY(1,1) NOT NULL,
+	[ServerName] [nvarchar](258) NULL,
+	[CheckDate] [datetimeoffset](7) NULL,
+	[Version] [nvarchar](258) NULL,
+	[QueryType] [nvarchar](258) NULL,
+	[Warnings] [varchar](max) NULL,
+	[DatabaseName] [sysname] NOT NULL,
+	[SerialDesiredMemory] [float] NULL,
+	[SerialRequiredMemory] [float] NULL,
+	[AverageCPU] [bigint] NULL,
+	[TotalCPU] [bigint] NULL,
+	[PercentCPUByType] [money] NULL,
+	[CPUWeight] [money] NULL,
+	[AverageDuration] [bigint] NULL,
+	[TotalDuration] [bigint] NULL,
+	[DurationWeight] [money] NULL,
+	[PercentDurationByType] [money] NULL,
+	[AverageReads] [bigint] NULL,
+	[TotalReads] [bigint] NULL,
+	[ReadWeight] [money] NULL,
+	[PercentReadsByType] [money] NULL,
+	[AverageWrites] [bigint] NULL,
+	[TotalWrites] [bigint] NULL,
+	[WriteWeight] [money] NULL,
+	[PercentWritesByType] [money] NULL,
+	[ExecutionCount] [bigint] NULL,
+	[ExecutionWeight] [money] NULL,
+	[PercentExecutionsByType] [money] NULL,
+	[ExecutionsPerMinute] [money] NULL,
+	[PlanCreationTime] [datetime] NULL,
+	[PlanCreationTimeHours]  AS (datediff(hour,[PlanCreationTime],sysdatetime())),
+	[LastExecutionTime] [datetime] NULL,
+	[PlanHandle] [varbinary](64) NULL,
+	[Remove Plan Handle From Cache]  AS (case when [PlanHandle] IS NOT NULL then ('DBCC FREEPROCCACHE ('+CONVERT([varchar](128),[PlanHandle],(1)))+');' else 'N/A' end),
+	[SqlHandle] [varbinary](64) NULL,
+	[Remove SQL Handle From Cache]  AS (case when [SqlHandle] IS NOT NULL then ('DBCC FREEPROCCACHE ('+CONVERT([varchar](128),[SqlHandle],(1)))+');' else 'N/A' end),
+	[SQL Handle More Info]  AS (case when [SqlHandle] IS NOT NULL then ('EXEC sp_BlitzCache @OnlySqlHandles = '''+CONVERT([varchar](128),[SqlHandle],(1)))+'''; ' else 'N/A' end),
+	[QueryHash] [binary](8) NULL,
+	[Query Hash More Info]  AS (case when [QueryHash] IS NOT NULL then ('EXEC sp_BlitzCache @OnlyQueryHashes = '''+CONVERT([varchar](32),[QueryHash],(1)))+'''; ' else 'N/A' end),
+	[QueryPlanHash] [binary](8) NULL,
+	[StatementStartOffset] [int] NULL,
+	[StatementEndOffset] [int] NULL,
+	[MinReturnedRows] [bigint] NULL,
+	[MaxReturnedRows] [bigint] NULL,
+	[AverageReturnedRows] [money] NULL,
+	[TotalReturnedRows] [bigint] NULL,
+	[QueryText] [nvarchar](max) NULL,
+	[QueryPlan] [xml] NULL,
+	[NumberOfPlans] [int] NULL,
+	[NumberOfDistinctPlans] [int] NULL,
+	[MinGrantKB] [bigint] NULL,
+	[MaxGrantKB] [bigint] NULL,
+	[MinUsedGrantKB] [bigint] NULL,
+	[MaxUsedGrantKB] [bigint] NULL,
+	[PercentMemoryGrantUsed] [money] NULL,
+	[AvgMaxMemoryGrant] [money] NULL,
+	[MinSpills] [bigint] NULL,
+	[MaxSpills] [bigint] NULL,
+	[TotalSpills] [bigint] NULL,
+	[AvgSpills] [money] NULL,
+	[QueryPlanCost] [float] NULL,
+ CONSTRAINT [PK_C6CA376B-962C-4121-9E1E-09E58BE2D6FB] PRIMARY KEY CLUSTERED 
+(
+	[ID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON, FILLFACTOR = 85) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+
+GO
+
+SET ANSI_PADDING OFF
+GO
+
+USE [DBAdmin]
+GO
+
+/****** Object:  Table [dbo].[BlitzFirst]    Script Date: 09/06/2019 10:41:36 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+SET ANSI_PADDING ON
+GO
+
+CREATE TABLE [dbo].[BlitzFirst](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[ServerName] [nvarchar](128) NULL,
+	[CheckDate] [datetimeoffset](7) NULL,
+	[CheckID] [int] NOT NULL,
+	[Priority] [tinyint] NOT NULL,
+	[FindingsGroup] [varchar](50) NOT NULL,
+	[Finding] [varchar](200) NOT NULL,
+	[URL] [varchar](200) NOT NULL,
+	[Details] [nvarchar](4000) NULL,
+	[HowToStopIt] [xml] NULL,
+	[QueryPlan] [xml] NULL,
+	[QueryText] [nvarchar](max) NULL,
+	[StartTime] [datetimeoffset](7) NULL,
+	[LoginName] [nvarchar](128) NULL,
+	[NTUserName] [nvarchar](128) NULL,
+	[OriginalLoginName] [nvarchar](128) NULL,
+	[ProgramName] [nvarchar](128) NULL,
+	[HostName] [nvarchar](128) NULL,
+	[DatabaseID] [int] NULL,
+	[DatabaseName] [nvarchar](128) NULL,
+	[OpenTransactionCount] [int] NULL,
+	[DetailsInt] [int] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[ID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON, FILLFACTOR = 85) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+
+GO
+
+SET ANSI_PADDING OFF
+GO
+
+USE [DBAdmin]
+GO
+
+/****** Object:  Table [dbo].[BlitzFirst_FileStats]    Script Date: 09/06/2019 10:41:36 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[BlitzFirst_FileStats](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[ServerName] [nvarchar](128) NULL,
+	[CheckDate] [datetimeoffset](7) NULL,
+	[DatabaseID] [int] NOT NULL,
+	[FileID] [int] NOT NULL,
+	[DatabaseName] [nvarchar](256) NULL,
+	[FileLogicalName] [nvarchar](256) NULL,
+	[TypeDesc] [nvarchar](60) NULL,
+	[SizeOnDiskMB] [bigint] NULL,
+	[io_stall_read_ms] [bigint] NULL,
+	[num_of_reads] [bigint] NULL,
+	[bytes_read] [bigint] NULL,
+	[io_stall_write_ms] [bigint] NULL,
+	[num_of_writes] [bigint] NULL,
+	[bytes_written] [bigint] NULL,
+	[PhysicalName] [nvarchar](520) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[ID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON, FILLFACTOR = 85) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+USE [DBAdmin]
+GO
+
+/****** Object:  Table [dbo].[BlitzFirst_PerfmonStats]    Script Date: 09/06/2019 10:41:36 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[BlitzFirst_PerfmonStats](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[ServerName] [nvarchar](128) NULL,
+	[CheckDate] [datetimeoffset](7) NULL,
+	[object_name] [nvarchar](128) NOT NULL,
+	[counter_name] [nvarchar](128) NOT NULL,
+	[instance_name] [nvarchar](128) NULL,
+	[cntr_value] [bigint] NULL,
+	[cntr_type] [int] NOT NULL,
+	[value_delta] [bigint] NULL,
+	[value_per_second] [decimal](18, 2) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[ID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON, FILLFACTOR = 85) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+USE [DBAdmin]
+GO
+
+/****** Object:  Table [dbo].[BlitzFirst_WaitStats]    Script Date: 09/06/2019 10:41:36 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[BlitzFirst_WaitStats](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[ServerName] [nvarchar](128) NULL,
+	[CheckDate] [datetimeoffset](7) NULL,
+	[wait_type] [nvarchar](60) NULL,
+	[wait_time_ms] [bigint] NULL,
+	[signal_wait_time_ms] [bigint] NULL,
+	[waiting_tasks_count] [bigint] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[ID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON, FILLFACTOR = 85) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+USE [DBAdmin]
+GO
+
+/****** Object:  Table [dbo].[BlitzFirst_WaitStats_Categories]    Script Date: 09/06/2019 10:41:36 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[BlitzFirst_WaitStats_Categories](
+	[WaitType] [nvarchar](60) NOT NULL,
+	[WaitCategory] [nvarchar](128) NOT NULL,
+	[Ignorable] [bit] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[WaitType] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON, FILLFACTOR = 85) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+USE [DBAdmin]
+GO
+
+/****** Object:  Table [dbo].[db_healthcheck_database]    Script Date: 09/06/2019 10:41:36 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+SET ANSI_PADDING ON
+GO
+
+CREATE TABLE [dbo].[db_healthcheck_database](
+	[dbname] [varchar](max) NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+
+GO
+
+SET ANSI_PADDING OFF
+GO
+
+USE [DBAdmin]
+GO
+
+/****** Object:  Table [dbo].[db_healthcheck_dbcc_out]    Script Date: 09/06/2019 10:41:36 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+SET ANSI_PADDING ON
+GO
+
+CREATE TABLE [dbo].[db_healthcheck_dbcc_out](
+	[db_healthcheck_dbcc_out_error] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_level] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_state] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_messagetext] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_repairlevel] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_status] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_dbid] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_dbfragid] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_objectid] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_indexid] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_partitionid] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_allocunitid] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_riddbid] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_ridpruid] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_file] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_page] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_slot] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_refdbid] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_refpruid] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_reffile] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_refpage] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_refslot] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_allocation] [varchar](max) NULL,
+	[db_healthcheck_dbcc_out_timestamp] [datetime] NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+
+GO
+
+SET ANSI_PADDING OFF
+GO
+
+USE [DBAdmin]
+GO
+
+/****** Object:  Table [dbo].[db_healthcheck_disk_space]    Script Date: 09/06/2019 10:41:36 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+SET ANSI_PADDING ON
+GO
+
+CREATE TABLE [dbo].[db_healthcheck_disk_space](
+	[db_healthcheck_disk_space_drive] [varchar](max) NULL,
+	[db_healthcheck_disk_space_drive_percent_free] [varchar](max) NULL,
+	[db_healthcheck_disk_space_drive_timestamp] [datetime] NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+
+GO
+
+SET ANSI_PADDING OFF
+GO
+
+USE [DBAdmin]
+GO
+
+/****** Object:  Table [dbo].[dba_indexDefragDBExclusion]    Script Date: 09/06/2019 10:41:36 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[dba_indexDefragDBExclusion](
+	[databaseName] [nvarchar](128) NOT NULL,
+ CONSTRAINT [PK_indexDefragDBExclusion_v40] PRIMARY KEY CLUSTERED 
+(
+	[databaseName] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+USE [DBAdmin]
+GO
+
+/****** Object:  Table [dbo].[dba_indexDefragExclusion]    Script Date: 09/06/2019 10:41:36 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[dba_indexDefragExclusion](
+	[databaseID] [int] NOT NULL,
+	[databaseName] [nvarchar](128) NOT NULL,
+	[objectID] [int] NOT NULL,
+	[objectName] [nvarchar](128) NOT NULL,
+	[indexID] [int] NOT NULL,
+	[indexName] [nvarchar](128) NOT NULL,
+	[exclusionMask] [int] NOT NULL,
+ CONSTRAINT [PK_indexDefragExclusion_v40] PRIMARY KEY CLUSTERED 
+(
+	[databaseID] ASC,
+	[objectID] ASC,
+	[indexID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+USE [DBAdmin]
+GO
+
+/****** Object:  Table [dbo].[dba_indexDefragLog]    Script Date: 09/06/2019 10:41:36 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+SET ANSI_PADDING ON
+GO
+
+CREATE TABLE [dbo].[dba_indexDefragLog](
+	[indexDefrag_id] [int] IDENTITY(1,1) NOT NULL,
+	[databaseID] [int] NOT NULL,
+	[databaseName] [nvarchar](128) NOT NULL,
+	[objectID] [int] NOT NULL,
+	[objectName] [nvarchar](128) NOT NULL,
+	[indexID] [int] NOT NULL,
+	[indexName] [nvarchar](128) NOT NULL,
+	[partitionNumber] [smallint] NOT NULL,
+	[fragmentation] [float] NOT NULL,
+	[page_count] [int] NOT NULL,
+	[dateTimeStart] [datetime] NOT NULL,
+	[dateTimeEnd] [datetime] NULL,
+	[durationSeconds] [int] NULL,
+	[sqlStatement] [varchar](4000) NULL,
+	[errorMessage] [varchar](1000) NULL,
+ CONSTRAINT [PK_indexDefragLog_v40] PRIMARY KEY CLUSTERED 
+(
+	[indexDefrag_id] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+SET ANSI_PADDING OFF
+GO
+
+USE [DBAdmin]
+GO
+
+/****** Object:  Table [dbo].[dba_indexDefragStatus]    Script Date: 09/06/2019 10:41:36 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[dba_indexDefragStatus](
+	[databaseID] [int] NOT NULL,
+	[databaseName] [nvarchar](128) NOT NULL,
+	[objectID] [int] NOT NULL,
+	[indexID] [int] NOT NULL,
+	[partitionNumber] [smallint] NOT NULL,
+	[fragmentation] [float] NOT NULL,
+	[page_count] [int] NOT NULL,
+	[range_scan_count] [bigint] NOT NULL,
+	[schemaName] [nvarchar](128) NULL,
+	[objectName] [nvarchar](128) NULL,
+	[indexName] [nvarchar](128) NULL,
+	[scanDate] [datetime] NOT NULL,
+	[defragDate] [datetime] NULL,
+	[printStatus] [bit] NOT NULL,
+	[exclusionMask] [int] NOT NULL,
+ CONSTRAINT [PK_indexDefragStatus_v40] PRIMARY KEY CLUSTERED 
+(
+	[databaseID] ASC,
+	[objectID] ASC,
+	[indexID] ASC,
+	[partitionNumber] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+USE [DBAdmin]
+GO
+
+/****** Object:  Table [dbo].[WhoIsActive]    Script Date: 09/06/2019 10:41:36 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+SET ANSI_PADDING ON
+GO
+
+CREATE TABLE [dbo].[WhoIsActive](
+	[dd hh:mm:ss.mss] [varchar](8000) NULL,
+	[session_id] [smallint] NOT NULL,
+	[sql_text] [xml] NULL,
+	[sql_command] [xml] NULL,
+	[login_name] [nvarchar](128) NOT NULL,
+	[wait_info] [nvarchar](4000) NULL,
+	[tran_log_writes] [nvarchar](4000) NULL,
+	[CPU] [varchar](30) NULL,
+	[tempdb_allocations] [varchar](30) NULL,
+	[tempdb_current] [varchar](30) NULL,
+	[blocking_session_id] [smallint] NULL,
+	[reads] [varchar](30) NULL,
+	[writes] [varchar](30) NULL,
+	[physical_reads] [varchar](30) NULL,
+	[query_plan] [xml] NULL,
+	[used_memory] [varchar](30) NULL,
+	[status] [varchar](30) NOT NULL,
+	[tran_start_time] [datetime] NULL,
+	[open_tran_count] [varchar](30) NULL,
+	[percent_complete] [varchar](30) NULL,
+	[host_name] [nvarchar](128) NULL,
+	[database_name] [nvarchar](128) NULL,
+	[program_name] [nvarchar](128) NULL,
+	[start_time] [datetime] NOT NULL,
+	[login_time] [datetime] NULL,
+	[request_id] [int] NULL,
+	[collection_time] [datetime] NOT NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+
+GO
+
+SET ANSI_PADDING OFF
+GO
+
+ALTER TABLE [dbo].[BlitzFirst_WaitStats_Categories] ADD  DEFAULT ((0)) FOR [Ignorable]
+GO
+
+ALTER TABLE [dbo].[db_healthcheck_dbcc_out] ADD  DEFAULT (getdate()) FOR [db_healthcheck_dbcc_out_timestamp]
+GO
+
+ALTER TABLE [dbo].[db_healthcheck_disk_space] ADD  DEFAULT (getdate()) FOR [db_healthcheck_disk_space_drive_timestamp]
+GO
+
+ALTER TABLE [dbo].[dba_indexDefragStatus] ADD  DEFAULT ((0)) FOR [printStatus]
+GO
+
+ALTER TABLE [dbo].[dba_indexDefragStatus] ADD  DEFAULT ((0)) FOR [exclusionMask]
+GO
+
+
