@@ -1,0 +1,130 @@
+USE [DBAdmin]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_db_healthcheck]    Script Date: 09/06/2019 10:32:05 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+
+
+
+CREATE procedure [dbo].[sp_db_healthcheck]
+@reportdir varchar(max)=null,@tableresults bit
+as
+
+
+
+
+declare @a_sname varchar(max)
+declare @a_dbname varchar(max)
+declare @a_sqlcmd nvarchar(max)
+declare @a_timestamp varchar(max)
+declare @a_sqlcmd_dbcc varchar(max)
+declare @a_dbcc_fields varchar(max)
+
+
+
+set @a_dbcc_fields = ' [db_healthcheck_dbcc_out_error] '
+set @a_dbcc_fields += '       ,[db_healthcheck_dbcc_out_level] '
+set @a_dbcc_fields += '      ,[db_healthcheck_dbcc_out_state] '
+set @a_dbcc_fields += '      ,[db_healthcheck_dbcc_out_messagetext] '
+set @a_dbcc_fields += '      ,[db_healthcheck_dbcc_out_repairlevel] '
+set @a_dbcc_fields += '      ,[db_healthcheck_dbcc_out_status] '
+set @a_dbcc_fields += '      ,[db_healthcheck_dbcc_out_dbid] '
+set @a_dbcc_fields += '      ,[db_healthcheck_dbcc_out_dbfragid] '
+set @a_dbcc_fields += '      ,[db_healthcheck_dbcc_out_objectid] '
+set @a_dbcc_fields += '      ,[db_healthcheck_dbcc_out_indexid] '
+set @a_dbcc_fields += '      ,[db_healthcheck_dbcc_out_partitionid] '
+set @a_dbcc_fields += '      ,[db_healthcheck_dbcc_out_allocunitid] '
+set @a_dbcc_fields += '      ,[db_healthcheck_dbcc_out_riddbid] '
+set @a_dbcc_fields += '      ,[db_healthcheck_dbcc_out_ridpruid] '
+set @a_dbcc_fields += '      ,[db_healthcheck_dbcc_out_file] '
+set @a_dbcc_fields += '      ,[db_healthcheck_dbcc_out_page] '
+set @a_dbcc_fields += '      ,[db_healthcheck_dbcc_out_slot] '
+set @a_dbcc_fields += '      ,[db_healthcheck_dbcc_out_refdbid] '
+set @a_dbcc_fields += '      ,[db_healthcheck_dbcc_out_refpruid] '
+set @a_dbcc_fields += '      ,[db_healthcheck_dbcc_out_reffile] '
+set @a_dbcc_fields += '      ,[db_healthcheck_dbcc_out_refpage] '
+set @a_dbcc_fields += '      ,[db_healthcheck_dbcc_out_refslot] '
+set @a_dbcc_fields += '      ,[db_healthcheck_dbcc_out_allocation] '
+
+
+
+declare a_cursor cursor for
+
+
+
+
+
+
+select dbname from dbadmin..db_healthcheck_database
+
+
+
+open a_cursor
+
+fetch next from a_cursor into @a_dbname
+
+while @@FETCH_STATUS=0
+begin
+
+
+
+	if @tableresults=1 
+	begin
+	
+		select @a_sname = srvname from sysservers
+		select @a_timestamp = replace(replace(replace(convert(varchar(max),getdate(),120),char(45),''),char(58),''),char(32),'')
+
+		--select @a_sqlcmd_dbcc = 'use ' + @a_dbname + '  insert into dbadmin..db_healthcheck_dbcc_out exec (''dbcc checkdb with tableresults'')'
+		select @a_sqlcmd_dbcc = 'use ' + @a_dbname + '  insert into dbadmin..db_healthcheck_dbcc_out (' + @a_dbcc_fields + ') exec (''dbcc checkdb with tableresults'')'
+
+
+
+		--select @a_sqlcmd_dbcc = 'use ' + @a_dbname + '  dbcc checkdb'
+		--print @a_sqlcmd_dbcc
+
+		set @a_sqlcmd = @a_sqlcmd_dbcc
+		exec sp_executesql @a_sqlcmd
+
+
+	end
+
+	else
+
+	begin
+
+
+		select @a_sname = srvname from sysservers
+		select @a_timestamp = replace(replace(replace(convert(varchar(max),getdate(),120),char(45),''),char(58),''),char(32),'')
+		select @a_sqlcmd_dbcc = 'use ' + @a_dbname + '  dbcc checkdb'
+		set @a_sqlcmd = replace(replace(replace(@a_sqlcmd,'@a_sname',@a_sname),'<filename>','dbcc_checkdb_out_' + @a_dbname + '_' + @a_timestamp + '.txt'),'<dbcc checkdb>',@a_sqlcmd_dbcc)
+
+		--print @a_sqlcmd
+
+		exec sp_executesql @a_sqlcmd
+
+	end
+
+
+
+
+
+
+	fetch next from a_cursor into @a_dbname
+end
+
+
+close a_cursor
+deallocate a_cursor
+
+
+
+
+GO
+
+
