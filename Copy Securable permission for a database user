@@ -1,5 +1,7 @@
 
-declare @DBRoleName varchar(40) = 'IFW\Slove'
+
+USE DBNmae --provide the database here
+declare @DBRoleName varchar(40) = 'DBUser'  --provide the database user here
 SELECT 'GRANT ' + dbprm.permission_name + ' ON ' +'['+ OBJECT_SCHEMA_NAME(major_id) + '.' + OBJECT_NAME(major_id) +']'+ ' TO ' + dbrol.name + char(13) COLLATE Latin1_General_CI_AS
 from sys.database_permissions dbprm
 join sys.database_principals dbrol on
