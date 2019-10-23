@@ -1,16 +1,491 @@
-Hi Doug and Abraham, are we close to having this report back up and running?  
-Also, if you haven’t already, please provide the updated manual report to Ellen and Kristen. 
-That report is needed on a daily basis.
+USE [XFSUS_Portal]
+GO
 
- 
+/****** Object:  StoredProcedure [dbo].[sp_export_return_auth_asset]    Script Date: 10/23/2019 12:39:42 AM ******/
+SET ANSI_NULLS ON
+GO
 
-Brett
+SET QUOTED_IDENTIFIER ON
+GO
 
 
 
-Hi Brett, 
+Alter procedure [dbo].[sp_export_return_auth_asset_Abraham]
+@recordcount int output
+as
 
-I am still working on the issue. I hope to resolve it today or tomorrrow. 
-I will send the manual report every morning to Ellen and Kristen until the job is working again. 
+--declare @recordcount int--varchar(max)
 
-Thanks, Abraham
+
+
+
+
+----------------------------------------------------------------------------------------------------------------
+---------------------------------------begin produce main recordset---------------------------------------------
+----------------------------------------------------------------------------------------------------------------
+
+
+
+declare @assettemp table
+(
+assettemp_serialnumber varchar(max)
+,assettemp_assetid varchar(max)
+,assettemp_contractno varchar(max)
+,assettemp_dealer varchar(max)
+,assettemp_ra_date datetime
+,assettemp_m_partner_code varchar(max)
+,assettemp_manufacturer_maker varchar(max)
+,assettemp_returndate datetime
+,assettemp_warehouse_name varchar(max)
+,assettemp_insurance_amount varchar(max)
+,assettemp_warehouse_address varchar(max)
+,assettemp_warehose_phone varchar(max)
+,assettemp_buyoutquoteid varchar(max)
+)
+
+
+
+
+
+insert into @assettemp
+
+
+select
+distinct
+aa.*
+from
+(
+
+	select
+	a.serialnumber
+	,a.assetid
+	,a.contractno
+	,b.DEALER
+	,a.datetimestamp as ra_date
+	,c.warehouse_code as rm_partner_code
+	,'' as manufacturer_maker
+	,a.returndate
+	,a.WarehouseName
+	,a.InsuredAmount
+	,a.WarehouseAddress
+	,a.WarehousePhone
+	,a.BuyoutQuoteID
+
+	from xfsus_portal..ReturnAuthLetterLog a
+	left join IL10_XFSUS..LS_MASTER_NF b on left(ltrim(rtrim(a.buyoutquoteid)),charindex('*',ltrim(rtrim(a.buyoutquoteid)))-1)=b.ALTERNATE_ID collate database_default
+	left join xfsus_portal..ReturnAuthWarehouse c on a.WarehouseName=c.warehouse_name
+	inner join
+	(
+		--assets not in history
+		select distinct a.assetid as assetid 
+		from xfsus_portal..returnauthletterlog a
+		left join xfsus_portal..returnauthassethistory b on a.assetid=b.returnauthassethistory_asset_id and a.[ID]=b.returnauthassethistory_returnauth_letter_log_id
+		where
+		b.returnauthassethistory_asset_id is null
+	) assets_not_in_history on a.AssetID=assets_not_in_history.assetid
+
+
+
+	union all
+
+
+
+	select
+	a.serialnumber
+	,a.assetid
+	,a.contractno
+	,b.DEALER
+	,a.datetimestamp as ra_date
+	,c.warehouse_code as rm_partner_code
+	,'' as manufacturer_maker
+	,a.returndate
+	,a.WarehouseName
+	,a.InsuredAmount
+	,a.WarehouseAddress
+	,a.WarehousePhone
+	,a.BuyoutQuoteID
+
+	from xfsus_portal..ReturnAuthLetterLog a
+	left join IL10_XFSUS..LS_MASTER_NF b on left(ltrim(rtrim(a.buyoutquoteid)),charindex('*',ltrim(rtrim(a.buyoutquoteid)))-1)=b.ALTERNATE_ID collate database_default
+	left join xfsus_portal..ReturnAuthWarehouse c on a.WarehouseName=c.warehouse_name
+	inner join
+	(
+		--assets in history with RA date greater than 30 days
+
+		select distinct a.assetid as assetid 
+		from xfsus_portal..returnauthletterlog a
+		inner join xfsus_portal..returnauthassethistory b on a.assetid=b.returnauthassethistory_asset_id and a.[ID]=b.returnauthassethistory_returnauth_letter_log_id
+		where
+		--datediff(d,a.returndate,getdate()) > 30
+		datediff(d,a.returndate,b.returnauthassethistory_datetimestamp_at_insert_time) > 30
+	) assets_in_history_ra_gt_30 on a.AssetID=assets_in_history_ra_gt_30.assetid
+
+
+
+	
+)aa
+
+
+
+--select * from @assettemp
+
+
+----------------------------------------------------------------------------------------------------------------
+-----------------------------------------end produce main recordset---------------------------------------------
+----------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+----------------------------------------------------------------------------------------------------------------
+----------------------------------begin clear and populate staging table----------------------------------------
+----------------------------------------------------------------------------------------------------------------
+
+truncate table returnauthletterlog_staging
+
+insert into returnauthletterlog_staging 
+(
+	[ID]
+	,[BuyoutQuoteID]
+    ,[CustomerNumber]
+    ,[CustomerName]
+    ,[CustomerAddress]
+    ,[CustomerCityStateZip]
+    ,[ContractNo]
+    ,[ModelNumber]
+    ,[SerialNumber]
+    ,[ReturnDate]
+    ,[WarehouseName]
+	,[InsuredAmount]
+    ,[WarehouseAddress]
+    ,[WarehousePhone]
+    ,[ReturnAuthLetterLogID]
+    ,[UserGenerated]
+    ,[DatetimeStamp]
+    ,[AssetID]
+    ,[Maker]
+)
+
+select 
+[ID]
+,[BuyoutQuoteID]
+,[CustomerNumber]
+,[CustomerName]
+,[CustomerAddress]
+,[CustomerCityStateZip]
+,[ContractNo]
+,[ModelNumber]
+,[SerialNumber]
+,[ReturnDate]
+,[WarehouseName]
+,[InsuredAmount]
+,[WarehouseAddress]
+,[WarehousePhone]
+,[ReturnAuthLetterLogID]
+,[UserGenerated]
+,[DatetimeStamp]
+,[AssetID]
+,[Maker]
+
+from returnauthletterlog
+
+
+----------------------------------------------------------------------------------------------------------------
+------------------------------------end clear and populate staging table----------------------------------------
+----------------------------------------------------------------------------------------------------------------
+
+
+
+
+----------------------------------------------------------------------------------------------------------------
+---------------------------------------begin produce recordcount------------------------------------------------
+----------------------------------------------------------------------------------------------------------------
+
+
+select @recordcount = count(*)
+from
+(
+
+	select * from @assettemp
+
+/*
+	select
+	distinct
+	aa.*
+	from
+	(
+
+		select
+		a.serialnumber
+		,a.assetid
+		,a.contractno
+		,b.DEALER
+		,a.datetimestamp as ra_date
+		,c.warehouse_code as rm_partner_code
+		,'' as manufacturer_maker
+		,a.returndate
+		,a.WarehouseName
+		,a.WarehouseAddress
+		,a.WarehousePhone
+		,a.BuyoutQuoteID
+	
+		from xfsus_portal..ReturnAuthLetterLog_staging a
+
+		left join IL10_XFSUS..LS_MASTER_NF b on left(ltrim(rtrim(a.buyoutquoteid)),charindex('*',ltrim(rtrim(a.buyoutquoteid)))-1)=b.ALTERNATE_ID collate database_default
+		left join xfsus_portal..ReturnAuthWarehouse c on a.WarehouseName=c.warehouse_name
+		inner join
+		(
+			--assets not in history
+			select distinct a.assetid as assetid 
+			from xfsus_portal..returnauthletterlog_staging a
+			left join xfsus_portal..returnauthassethistory b on a.assetid=b.returnauthassethistory_asset_id and a.[ID]=b.returnauthassethistory_returnauth_letter_log_id
+			where
+			b.returnauthassethistory_asset_id is null
+		) assets_not_in_history on a.AssetID=assets_not_in_history.assetid
+
+
+
+
+		union all
+
+
+
+		select
+		a.serialnumber
+		,a.assetid
+		,a.contractno
+		,b.DEALER
+		,a.datetimestamp as ra_date
+		,c.warehouse_code as rm_partner_code
+		,'' as manufacturer_maker
+		,a.returndate
+		,a.WarehouseName
+		,a.WarehouseAddress
+		,a.WarehousePhone
+		,a.BuyoutQuoteID
+
+		from xfsus_portal..ReturnAuthLetterLog_staging a
+		left join IL10_XFSUS..LS_MASTER_NF b on left(ltrim(rtrim(a.buyoutquoteid)),charindex('*',ltrim(rtrim(a.buyoutquoteid)))-1)=b.ALTERNATE_ID collate database_default
+		left join xfsus_portal..ReturnAuthWarehouse c on a.WarehouseName=c.warehouse_name
+		inner join
+		(
+			--assets in history with RA date greater than 30 days
+
+			select distinct a.assetid as assetid 
+			from xfsus_portal..returnauthletterlog_staging a
+			inner join xfsus_portal..returnauthassethistory b on a.assetid=b.returnauthassethistory_asset_id and a.[id]=b.returnauthassethistory_returnauth_letter_log_id
+			where
+			--datediff(d,a.returndate,getdate()) > 30
+			datediff(d,a.returndate,b.returnauthassethistory_sent_datetimestamp) > 30
+		) assets_in_history_ra_gt_30 on a.AssetID=assets_in_history_ra_gt_30.assetid
+
+
+
+	
+	)aa
+*/
+
+
+)a
+
+
+----------------------------------------------------------------------------------------------------------------
+-----------------------------------------end produce recordcount------------------------------------------------
+----------------------------------------------------------------------------------------------------------------
+
+
+
+----------------------------------------------------------------------------------------------------------------
+---------------------------------------begin insert into history------------------------------------------------
+----------------------------------------------------------------------------------------------------------------
+
+
+--insert assets into history table
+
+
+insert into ReturnAuthAssetHistory
+select
+a.assetid
+,a.[ID]
+,a.datetimestamp
+,getdate()
+from xfsus_portal..ReturnAuthLetterLog_staging a
+inner join
+(
+	--assets not in history
+	select distinct a.assetid as assetid 
+	from xfsus_portal..returnauthletterlog_staging a
+	left join xfsus_portal..returnauthassethistory b on a.assetid=b.returnauthassethistory_asset_id and a.[id]=b.returnauthassethistory_returnauth_letter_log_id
+	where
+	b.returnauthassethistory_asset_id is null
+) assets_not_in_history on a.AssetID=assets_not_in_history.assetid
+
+----------------------------------------------------------------------------------------------------------------
+-----------------------------------------end insert into history------------------------------------------------
+----------------------------------------------------------------------------------------------------------------
+
+
+
+----------------------------------------------------------------------------------------------------------------
+-----------------------------------------begin return final recordset-------------------------------------------
+----------------------------------------------------------------------------------------------------------------
+
+
+--return final recordset with recordcount
+
+
+select
+--a.*
+
+a.serialnumber
+,a.assetid
+,a.contractnumber
+,a.dealer
+,a.ra_date
+,a.rm_partner_code
+,a.manufacturer_maker
+,a.returndate
+,a.warehousename
+,a.insurance_amount
+,a.warehouseaddress
+,a.warehousephone
+,a.buyoutquoteid
+
+from
+(
+
+	select
+	 null as serialnumber
+	,null as assetid
+	,cast((@recordcount + 1) as varchar(max)) as contractnumber
+	,null as dealer
+	,null as ra_date
+	,null as rm_partner_code
+	,null as manufacturer_maker
+	,null as returndate
+	,null as warehousename
+	,null as insurance_amount
+	,null as warehouseaddress
+	,null as warehousephone
+	,null as buyoutquoteid
+
+
+	/*
+	select
+	@recordcount as serialnumber
+	,null as assetid
+	,null as contractnumber
+	,null as dealer
+	,null as ra_date
+	,null as rm_partner_code
+	,null as manufacturer_maker
+	,null as returndate
+	,null as warehousename
+	,null as warehouseaddress
+	,null as warehousephone
+	,null as buyoutquoteid
+	*/
+
+
+
+
+	union all
+
+
+	select * from @assettemp
+
+
+
+
+	/*
+	select
+	distinct
+	aa.*
+	from
+	(
+
+		select
+		a.serialnumber
+		,a.assetid
+		,a.contractno
+		,b.DEALER
+		,a.datetimestamp as ra_date
+		,c.warehouse_code as rm_partner_code
+		,'' as manufacturer_maker
+		,a.returndate
+		,a.WarehouseName
+		,a.WarehouseAddress
+		,a.WarehousePhone
+		,a.BuyoutQuoteID
+
+		from xfsus_portal..ReturnAuthLetterLog a
+		left join IL10_XFSUS..LS_MASTER_NF b on left(ltrim(rtrim(a.buyoutquoteid)),charindex('*',ltrim(rtrim(a.buyoutquoteid)))-1)=b.ALTERNATE_ID collate database_default
+		left join xfsus_portal..ReturnAuthWarehouse c on a.WarehouseName=c.warehouse_name
+		inner join
+		(
+			--assets not in history
+			select distinct a.assetid as assetid 
+			from xfsus_portal..returnauthletterlog a
+			left join xfsus_portal..returnauthassethistory b on a.assetid=b.returnauthassethistory_asset_id and a.[ID]=b.returnauthassethistory_returnauth_letter_log_id
+			where
+			b.returnauthassethistory_asset_id is null
+		) assets_not_in_history on a.AssetID=assets_not_in_history.assetid
+
+
+
+		union all
+
+
+
+		select
+		a.serialnumber
+		,a.assetid
+		,a.contractno
+		,b.DEALER
+		,a.datetimestamp as ra_date
+		,c.warehouse_code as rm_partner_code
+		,'' as manufacturer_maker
+		,a.returndate
+		,a.WarehouseName
+		,a.WarehouseAddress
+		,a.WarehousePhone
+		,a.BuyoutQuoteID
+
+		from xfsus_portal..ReturnAuthLetterLog a
+		left join IL10_XFSUS..LS_MASTER_NF b on left(ltrim(rtrim(a.buyoutquoteid)),charindex('*',ltrim(rtrim(a.buyoutquoteid)))-1)=b.ALTERNATE_ID collate database_default
+		left join xfsus_portal..ReturnAuthWarehouse c on a.WarehouseName=c.warehouse_name
+		inner join
+		(
+			--assets in history with RA date greater than 30 days
+
+			select distinct a.assetid as assetid 
+			from xfsus_portal..returnauthletterlog a
+			inner join xfsus_portal..returnauthassethistory b on a.assetid=b.returnauthassethistory_asset_id and a.[ID]=b.returnauthassethistory_returnauth_letter_log_id
+			where
+			datediff(d,a.returndate,getdate()) > 30
+		) assets_in_history_ra_gt_30 on a.AssetID=assets_in_history_ra_gt_30.assetid
+
+
+
+	
+	)aa
+	*/
+
+
+
+)a
+
+
+----------------------------------------------------------------------------------------------------------------
+-------------------------------------------end return final recordset-------------------------------------------
+----------------------------------------------------------------------------------------------------------------
+
+
+
+
+GO
+
+
